@@ -5,6 +5,8 @@ Validates the structural nesting of a JSON string using a Stack.
 Reports the location (line, column) of any errors found.
 """
 
+from inspect import stack
+
 from stack import Stack
 
 
@@ -44,24 +46,7 @@ def validate(json_string):
     Run your validator against easy_correct.json and easy_broken.json.
     """
     """
-    CREATE empty stack
-    SET line = 1, col = 0
-
-    # ── STATE FLAG ───────────────────────────────────────────────
-    # in_string tracks whether we are currently inside a "quoted
-    # string". While True, structural characters like { and [ are
-    # just text content — they must be ignored by the validator.
-    # This is the key insight that separates a real validator from
-    # a naive parentheses checker.
-    SET in_string = FALSE
-
-    FOR each character in json_string:
-        INCREMENT col
-
-        IF character is newline:
-            INCREMENT line, RESET col to 0
-            CONTINUE                          # move to next character
-
+        
         # ── STRING MODE ──────────────────────────────────────────
         # If we are inside a quoted string, the only characters
         # that matter are:
@@ -86,28 +71,7 @@ def validate(json_string):
             SET in_string = TRUE
             CONTINUE
 
-        # Opening brace/bracket: push it onto the stack along with
-        # its location. We store the location so that if this opener
-        # is never closed, we can tell the user WHERE it was opened.
-        IF character is '{' or '[':
-            PUSH (character, line, col) onto stack
-
-        # Closing brace/bracket: this is the core stack operation.
-        # Pop the most recent opener and verify it matches this
-        # closer. { must match }, [ must match ].
-        ELSE IF character is '}' or ']':
-            IF stack is empty:
-                # Nothing to match against — this closer is unexpected.
-                REPORT error: unexpected closer at (line, col)
-                RETURN failure
-
-            POP (open_char, open_line, open_col) from stack
-            IF open_char does not match character:
-                # The opener and closer don't pair up.
-                REPORT error: expected matching closer for open_char
-                    (opened at open_line, open_col)
-                    but found character at (line, col)
-                RETURN failure
+        
 
     # ── AFTER ALL CHARACTERS ─────────────────────────────────────
 
@@ -117,17 +81,61 @@ def validate(json_string):
         REPORT error: unterminated string
         RETURN failure
 
+    """
+    stack = Stack() # Stack to track openers and their positions
+    line = 1 # Initialize line and column counters
+    col = 0
+    errors = [] # List to collect error messages
+
+    # ── STATE FLAG ───────────────────────────────────────────────
+    # in_string tracks whether we are currently inside a "quoted
+    # string". While True, structural characters like { and [ are
+    # just text content — they must be ignored by the validator.
+    # This is the key insight that separates a real validator from
+    # a naive parentheses checker.
+    in_string = False
+
+    for character in json_string:
+        col += 1 # Increment column for each character
+
+        if character == '\n':
+            line += 1
+            col = 0 # Reset column to 0 when newline is encountered
+        
+        # Opening brace/bracket: push it onto the stack along with
+        # its location. We store the location so that if this opener
+        # is never closed, we can tell the user WHERE it was opened.
+        if character == '{' or character == '[':
+            stack.push((character, line, col))
+            continue
+    
+        # Closing brace/bracket: this is the core stack operation.
+        # Pop the most recent opener and verify it matches this
+        # closer. { must match }, [ must match ].
+        elif character == '}' or character == ']':
+            if stack.is_empty():
+                # Nothing to match against — this closer is unexpected.
+                # REPORT error: unexpected closer at (line, col)
+                errors.append(f"ERROR: Unexpected '{character}' at Line {line}, Col {col}")
+                continue
+
+            else:
+                open_char, open_line, open_col = stack.pop()
+                if MATCHING[character] != open_char:
+                    # The opener and closer don't pair up.
+                    errors.append(f"ERROR: Expected '{MATCHING[character]}' at git Line {open_line}, Col {open_col} but found '{character}' at Line {line}, Col {col}")
+                    continue
+            
     # If the stack still has items, those openers were never closed.
     # Report each one with the location where it was opened.
-    IF stack is not empty:
-        FOR each remaining item on stack:
-            POP (open_char, open_line, open_col)
-            REPORT error: unclosed open_char at (open_line, open_col)
-        RETURN failure
+    while not stack.is_empty():
+        open_char, open_line, open_col = stack.pop()
+        errors.append(f"ERROR: Unclosed '{open_char}' at Line {open_line}, Col {open_col}")
 
-    RETURN success                             # all matched correctly
-    """
-    return True
+    if len(errors) == 0:
+        return True, errors
+    else:
+        return False, errors
 
 
 def validate_file(filepath):
