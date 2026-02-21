@@ -1,0 +1,11 @@
+{
+    "name": "Bob",
+    "age": 25,
+    "active": false,
+    "scores": [88, 76, 93,
+    "address": {
+        "street": "456 Oak Ave",
+        "city": "Portland",
+        "state": "ME"
+    }
+}

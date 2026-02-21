@@ -1,0 +1,43 @@
+{
+    "service": "data-pipeline",
+    "version": "3.0.1",
+    "config": {
+        "stages": [
+            {
+                "name": "extract",
+                "source": {
+                    "type": "database",
+                    "connection": {
+                        "host": "db.example.com",
+                        "port": 5432
+                    }
+                }
+            },
+            {
+                "name": "transform",
+                "rules": {
+                    "normalize": true,
+                    "filters": [
+                        {
+                            "field": "status",
+                            "operator": "in",
+                            "values": ["active", "pending"]
+                        },
+                        {
+                            "field": "region",
+                            "operator": "eq",
+                            "value": "us-east-1"
+
+                    ]
+                }
+            },
+            {
+                "name": "load",
+                "destination": {
+                    "type": "warehouse",
+                    "table": "processed_events"
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,30 @@
+{
+    "service": "api-gateway",
+    "version": "2.1.0",
+    "config": {
+        "routes": [
+            {
+                "path": "/users/{id}",
+                "method": "GET",
+                "description": "Fetch user by {id} from the [users] table",
+                "headers": {
+                    "Content-Type": "application/json",
+                    "X-Custom": "value with {braces} and [brackets]"
+                }
+            },
+            {
+                "path": "/items",
+                "method": "POST",
+                "validation": {
+                    "body": "required",
+                    "pattern": "^\\{\"name\": \"[a-z]+\"\\}$"
+                }
+            }
+        ],
+        "logging": {
+            "format": "[{timestamp}] {level}: {message}",
+            "output": "stdout"
+        }
+    },
+    "tags": ["production", "v2", "stable"]
+}
