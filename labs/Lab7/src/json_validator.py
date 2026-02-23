@@ -14,6 +14,8 @@ from stack import Stack
 MATCHING = {
     "}": "{",
     "]": "[",
+    "{": "}",
+    "[": "]"
 }
 
 
@@ -141,7 +143,8 @@ def validate(json_string):
                 open_char, open_line, open_col = stack.pop()
                 if MATCHING[character] != open_char:
                     # The opener and closer don't pair up.
-                    errors.append(f"ERROR: Expected '{MATCHING[character]}' at git Line {open_line}, Col {open_col} but found '{character}' at Line {line}, Col {col}")
+                    # errors.append(f"ERROR: Expected '{MATCHING[character]}' at git Line {open_line}, Col {open_col} but found '{character}' at Line {line}, Col {col}")
+                    errors.append(f"ERROR Line {line}, Col {col}: Expected '{MATCHING[open_char]}' but found '{character}' (opening '{open_char}' at Line {open_line}, Col {open_col})")
                     continue
             
     # If the stack still has items, those openers were never closed.
