@@ -46,30 +46,17 @@ def validate(json_string):
     Run your validator against easy_correct.json and easy_broken.json.
     """
     """
+    Extend your validator to handle quoted strings:
+
+    Track whether the scanner is currently inside a double-quoted string.
+    While inside a string, ignore all structural characters ({, }, [, ]).
+    Handle the escape sequence \" so that an escaped quote does not toggle the flag.
+    This is what prevents a value like "ports: [80, 443]" from being misinterpreted as containing a real array.
+
+    Run your validator against medium_correct.json and medium_broken.json.
         
-        # ── STRING MODE ──────────────────────────────────────────
-        # If we are inside a quoted string, the only characters
-        # that matter are:
-        #   backslash  → the next char is escaped, skip it
-        #   double-quote → this ends the string
-        # Everything else is just string content — skip it.
 
-        IF in_string is TRUE:
-            IF character is backslash:
-                SKIP the next character        # it is escaped (e.g., \")
-            ELSE IF character is double-quote:
-                SET in_string = FALSE          # we are leaving the string
-            CONTINUE                           # either way, move on
-
-        # ── NORMAL MODE ──────────────────────────────────────────
-        # We are outside any string. Structural characters matter.
-
-        # Encountering a double-quote means we are entering a string.
-        # From this point until the matching closing quote, we must
-        # ignore all braces and brackets.
-        IF character is double-quote:
-            SET in_string = TRUE
-            CONTINUE
+        
 
         
 
@@ -94,13 +81,44 @@ def validate(json_string):
     # This is the key insight that separates a real validator from
     # a naive parentheses checker.
     in_string = False
+    escaped = False # Tracks if the previous character was a backslash
 
     for character in json_string:
+        
         col += 1 # Increment column for each character
 
         if character == '\n':
             line += 1
             col = 0 # Reset column to 0 when newline is encountered
+        
+        # ── STRING MODE ──────────────────────────────────────────
+        # If we are inside a quoted string, the only characters
+        # that matter are:
+        #   backslash  → the next char is escaped, skip it
+        #   double-quote → this ends the string
+        # Everything else is just string content — skip it.
+
+        if in_string:
+            if escaped:
+                escaped = False
+                continue                   # skip this character, it is escaped
+            elif character == "\\":
+                escaped = True
+                continue                   # it is escaped (e.g., \")
+            elif character == "\"":
+                in_string = False          # we are leaving the string
+            continue                       # either way, move on
+
+        # ── NORMAL MODE ──────────────────────────────────────────
+        # We are outside any string. Structural characters matter.
+
+        # Encountering a double-quote means we are entering a string.
+        # From this point until the matching closing quote, we must
+        # ignore all braces and brackets.
+        
+        if character == "\"":
+            in_string = True
+            continue
         
         # Opening brace/bracket: push it onto the stack along with
         # its location. We store the location so that if this opener
